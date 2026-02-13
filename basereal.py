@@ -108,8 +108,8 @@ class BaseReal:
         self.custom_opt = {}
         self.__loadcustom()
 
-    def put_msg_txt(self,msg,datainfo:dict={}):
-        self.tts.put_msg_txt(msg,datainfo)
+    def put_msg_txt(self,msg,datainfo:dict={}, priority: any = 1):
+        self.tts.put_msg_txt(msg,datainfo,priority)
     
     def put_audio_frame(self,audio_chunk,datainfo:dict={}): #16khz 20ms pcm
         self.asr.put_audio_frame(audio_chunk,datainfo)

@@ -8,7 +8,8 @@ def llm_response(message,nerfreal:BaseReal):
     from openai import OpenAI
     client = OpenAI(
         # 如果您没有配置环境变量，请在此处用您的API Key进行替换
-        api_key=os.getenv("DASHSCOPE_API_KEY"),
+        # api_key=os.getenv("DASHSCOPE_API_KEY"),
+        api_key="sk-a2a7bfa3f51b41139193a3bef692d9d6",
         # 填写DashScope SDK的base_url
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
     )

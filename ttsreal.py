@@ -47,6 +47,10 @@ if TYPE_CHECKING:
     from basereal import BaseReal
 
 from logger import logger
+
+from collections import deque
+from threading import Lock
+
 class State(Enum):
     RUNNING=0
     PAUSE=1
@@ -61,32 +65,112 @@ class BaseTTS:
         self.chunk = self.sample_rate // self.fps # 320 samples per chunk (20ms * 16000 / 1000)
         self.input_stream = BytesIO()
 
-        self.msgqueue = Queue()
+        # self.msgqueue = Queue()
         self.state = State.RUNNING
+        # 使用 deque 替代 Queue
+        self.msgqueue = deque()
+        self.queue_lock = Lock()
+        self.current_msg = None  # 当前正在处理的消息
+
+    # def flush_talk(self):
+    #     self.msgqueue.queue.clear()
+    #     self.state = State.PAUSE
+
+    # def put_msg_txt(self,msg:str,datainfo:dict={}): 
+    #     if len(msg)>0:
+    #         self.msgqueue.put((msg,datainfo))
+
+    # def render(self,quit_event):
+    #     process_thread = Thread(target=self.process_tts, args=(quit_event,))
+    #     process_thread.start()
+    
+    # def process_tts(self,quit_event):        
+    #     while not quit_event.is_set():
+    #         try:
+    #             msg:tuple[str, dict] = self.msgqueue.get(block=True, timeout=1)
+    #             self.state=State.RUNNING
+    #         except queue.Empty:
+    #             continue
+    #         self.txt_to_audio(msg)
+    #     logger.info('ttsreal thread stop')
+    
+    # def txt_to_audio(self,msg:tuple[str, dict]):
+    #     pass
+
 
     def flush_talk(self):
-        self.msgqueue.queue.clear()
-        self.state = State.PAUSE
-
-    def put_msg_txt(self,msg:str,datainfo:dict={}): 
-        if len(msg)>0:
-            self.msgqueue.put((msg,datainfo))
-
-    def render(self,quit_event):
+        """清空所有待处理消息"""
+        logger.debug(f"清空所有待处理消息")
+        # with self.queue_lock:
+        #     self.msgqueue.clear()
+        #     self.current_msg = None
+        # self.state = State.PAUSE
+    
+    def put_msg_txt(self, msg: str, datainfo: dict = {}, priority: any = 1):
+        """
+        放入文本消息
+        :param msg: 文本内容
+        :param datainfo: 附加信息
+        :param priority: 优先级,NORMAL放队尾,URGENT插队到当前消息后面
+        """
+        if len(msg) == 0:
+            return
+            
+        with self.queue_lock:
+            if priority == 0:
+                # 紧急消息：插队到当前消息后面
+                if self.current_msg is not None:
+                    # 有正在处理的消息，插在它后面（队首位置）
+                    self.msgqueue.appendleft((msg, datainfo))
+                    logger.debug(f"紧急消息插队成功: {msg[:20]}...")
+                else:
+                    # 没有正在处理的消息，直接放队首
+                    self.msgqueue.appendleft((msg, datainfo))
+                    logger.debug(f"紧急消息放入队首: {msg[:20]}...")
+            else:
+                # 普通消息：放队尾
+                self.msgqueue.append((msg, datainfo))
+                logger.debug(f"普通消息放入队尾: {msg[:20]}...")
+    
+    def render(self, quit_event):
+        """启动TTS处理线程"""
         process_thread = Thread(target=self.process_tts, args=(quit_event,))
         process_thread.start()
     
-    def process_tts(self,quit_event):        
+    def process_tts(self, quit_event):
+        """TTS处理主循环"""
         while not quit_event.is_set():
             try:
-                msg:tuple[str, dict] = self.msgqueue.get(block=True, timeout=1)
-                self.state=State.RUNNING
-            except queue.Empty:
-                continue
-            self.txt_to_audio(msg)
+                # 获取下一条要处理的消息
+                with self.queue_lock:
+                    if len(self.msgqueue) > 0:
+                        msg = self.msgqueue.popleft()
+                        self.current_msg = msg
+                    else:
+                        msg = None
+                        self.current_msg = None
+                
+                if msg:
+                    self.state = State.RUNNING
+                    # 执行TTS转换
+                    self.txt_to_audio(msg)
+                    # 处理完成，清空当前消息
+                    with self.queue_lock:
+                        self.current_msg = None
+                else:
+                    # 没有消息时休眠，避免空转
+                    time.sleep(0.01)
+                    
+            except Exception as e:
+                logger.error(f"TTS处理异常: {e}")
+                with self.queue_lock:
+                    self.current_msg = None
+                time.sleep(0.1)
+                
         logger.info('ttsreal thread stop')
     
-    def txt_to_audio(self,msg:tuple[str, dict]):
+    def txt_to_audio(self, msg: tuple[str, dict]):
+        """子类实现具体的TTS转换逻辑"""
         pass
     
 

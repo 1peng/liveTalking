@@ -101,8 +101,9 @@ async def offer(request):
     nerfreals[sessionid] = nerfreal
     
     #ice_server = RTCIceServer(urls='stun:stun.l.google.com:19302')
-    ice_server = RTCIceServer(urls='stun:stun.miwifi.com:3478')
-    pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[ice_server]))
+    # ice_server = RTCIceServer(urls='stun:stun.miwifi.com:3478')
+    # pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[ice_server]))
+    pc = RTCPeerConnection(configuration=RTCConfiguration(iceServers=[]))
     pcs.add(pc)
 
     @pc.on("connectionstatechange")
@@ -150,7 +151,7 @@ async def human(request):
             nerfreals[sessionid].flush_talk()
 
         if params['type']=='echo':
-            nerfreals[sessionid].put_msg_txt(params['text'])
+            nerfreals[sessionid].put_msg_txt(params['text'],priority=0)
         elif params['type']=='chat':
             asyncio.get_event_loop().run_in_executor(None, llm_response, params['text'],nerfreals[sessionid])                         
             #nerfreals[sessionid].put_msg_txt(res)
@@ -335,7 +336,7 @@ if __name__ == '__main__':
     parser.add_argument('--customvideo_config', type=str, default='', help="custom action json")
 
     parser.add_argument('--tts', type=str, default='edgetts', help="tts service type") #xtts gpt-sovits cosyvoice fishtts tencent doubao indextts2 azuretts
-    parser.add_argument('--REF_FILE', type=str, default="zh-CN-YunxiaNeural",help="参考文件名或语音模型ID，默认值为 edgetts的语音模型ID zh-CN-YunxiaNeural, 若--tts指定为azuretts, 可以使用Azure语音模型ID, 如zh-CN-XiaoxiaoMultilingualNeural")
+    parser.add_argument('--REF_FILE', type=str, default="zh-CN-XiaoxiaoNeural",help="参考文件名或语音模型ID，默认值为 edgetts的语音模型ID zh-CN-YunxiaNeural, 若--tts指定为azuretts, 可以使用Azure语音模型ID, 如zh-CN-XiaoxiaoMultilingualNeural")
     parser.add_argument('--REF_TEXT', type=str, default=None)
     parser.add_argument('--TTS_SERVER', type=str, default='http://127.0.0.1:9880') # http://localhost:9000
     # parser.add_argument('--CHARACTER', type=str, default='test')
