@@ -261,6 +261,7 @@ class FishTTS(BaseTTS):
             'text':text,
             'reference_id':reffile,
             'format':'wav',
+            'seed': 42,
             'streaming':True,
             'use_memory_cache':'on'
         }
@@ -297,26 +298,48 @@ class FishTTS(BaseTTS):
     def stream_tts(self,audio_stream,msg:tuple[str, dict]):
         text,textevent = msg
         first = True
+        
+        # 累积所有音频数据
+        audio_buffer = b''
         for chunk in audio_stream:
-            if chunk is not None and len(chunk)>0:          
-                stream = np.frombuffer(chunk, dtype=np.int16).astype(np.float32) / 32767
-                stream = resampy.resample(x=stream, sr_orig=44100, sr_new=self.sample_rate)
-                #byte_stream=BytesIO(buffer)
-                #stream = self.__create_bytes_stream(byte_stream)
-                streamlen = stream.shape[0]
-                idx=0
-                while streamlen >= self.chunk:
-                    eventpoint={}
-                    if first:
-                        eventpoint={'status':'start','text':text}
-                        eventpoint.update(**textevent) #eventpoint={'status':'start','text':text,'msgevent':textevent}
-                        first = False
-                    self.parent.put_audio_frame(stream[idx:idx+self.chunk],eventpoint)
-                    streamlen -= self.chunk
-                    idx += self.chunk
-        eventpoint={'status':'end','text':text}
-        eventpoint.update(**textevent) #eventpoint={'status':'end','text':text,'msgevent':textevent}
-        self.parent.put_audio_frame(np.zeros(self.chunk,np.float32),eventpoint) 
+            if chunk is not None and len(chunk)>0:
+                audio_buffer += chunk
+        
+        # 处理累积的音频数据
+        if len(audio_buffer) > 0:
+            # 一次性解码和重采样
+            stream = np.frombuffer(audio_buffer, dtype=np.int16).astype(np.float32) / 32767
+            stream = resampy.resample(x=stream, sr_orig=44100, sr_new=self.sample_rate, filter='kaiser_best')
+            
+            streamlen = stream.shape[0]
+            idx=0
+            while streamlen >= self.chunk:
+                eventpoint={}
+                if first:
+                    eventpoint={'status':'start','text':text}
+                    eventpoint.update(**textevent) #eventpoint={'status':'start','text':text,'msgevent':textevent}
+                    first = False
+                self.parent.put_audio_frame(stream[idx:idx+self.chunk],eventpoint)
+                streamlen -= self.chunk
+                idx += self.chunk
+            
+            # 处理剩余部分
+            if streamlen > 0:
+                # 填充到完整chunk并添加淡出效果
+                padding = self.chunk - streamlen
+                fade_out = np.zeros(self.chunk, np.float32)
+                fade_out[:streamlen] = stream[idx:]
+                # 线性淡出
+                for i in range(streamlen, self.chunk):
+                    fade_out[i] = stream[idx + streamlen - 1] * (1.0 - (i - streamlen) / padding)
+                eventpoint={'status':'end','text':text}
+                eventpoint.update(**textevent) #eventpoint={'status':'end','text':text,'msgevent':textevent}
+                self.parent.put_audio_frame(fade_out, eventpoint)
+        else:
+            # 没有音频数据时发送结束帧
+            eventpoint={'status':'end','text':text}
+            eventpoint.update(**textevent) #eventpoint={'status':'end','text':text,'msgevent':textevent}
+            self.parent.put_audio_frame(np.zeros(self.chunk,np.float32),eventpoint) 
 
 ###########################################################################################
 class SovitsTTS(BaseTTS):
