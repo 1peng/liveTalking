@@ -147,6 +147,12 @@ class BaseReal:
     def is_speaking(self)->bool:
         return self.speaking
     
+    def get_remaining_duration(self)->float:
+        """获取剩余播放时长（秒）"""
+        if hasattr(self.tts, 'get_remaining_duration'):
+            return self.tts.get_remaining_duration()
+        return 0.0
+    
     def __loadcustom(self):
         for item in self.opt.customopt:
             logger.info(item)

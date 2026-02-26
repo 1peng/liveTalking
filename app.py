@@ -277,6 +277,17 @@ async def is_speaking(request):
         ),
     )
 
+async def get_remaining_duration(request):
+    params = await request.json()
+
+    sessionid = params.get('sessionid',0)
+    return web.Response(
+        content_type="application/json",
+        text=json.dumps(
+            {"code": 0, "data": nerfreals[sessionid].get_remaining_duration()}
+        ),
+    )
+
 
 async def on_shutdown(app):
     # close peer connections
@@ -404,6 +415,7 @@ if __name__ == '__main__':
     appasync.router.add_post("/record", record)
     appasync.router.add_post("/interrupt_talk", interrupt_talk)
     appasync.router.add_post("/is_speaking", is_speaking)
+    appasync.router.add_post("/get_remaining_duration", get_remaining_duration)
     appasync.router.add_static('/',path='web')
 
     # Configure default CORS settings.
