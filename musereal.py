@@ -198,7 +198,7 @@ def inference(quit_event,batch_size,input_latent_list_cycle,audio_feat_queue,aud
             count += batch_size
             #_totalframe += 1
             if count>=100:
-                logger.info(f"------actual avg infer fps:{count/counttime:.4f}")
+                # logger.info(f"------actual avg infer fps:{count/counttime:.4f}")
                 count=0
                 counttime=0
             for i,res_frame in enumerate(recon):
@@ -316,7 +316,7 @@ class MuseReal(BaseReal):
             #     count=0
             #     totaltime=0
             if video_track and video_track._queue.qsize()>=1.5*self.opt.batch_size:
-                logger.debug('sleep qsize=%d',video_track._queue.qsize())
+                # logger.debug('sleep qsize=%d',video_track._queue.qsize())
                 time.sleep(0.04*video_track._queue.qsize()*0.8)
             # if video_track._queue.qsize()>=5:
             #     print('sleep qsize=',video_track._queue.qsize())

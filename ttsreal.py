@@ -244,11 +244,6 @@ class EdgeTTS(BaseTTS):
 class FishTTS(BaseTTS):
     def __init__(self, opt, parent: 'BaseReal'):
         super().__init__(opt, parent)
-        self.total_duration = 0.0  # 总音频时长（秒）
-        self.start_time = 0.0  # 开始播放时间
-        self.paused = False  # 是否暂停
-        self.pause_time = 0.0  # 暂停开始时间
-        self.paused_duration = 0.0  # 累计暂停时长
 
     def txt_to_audio(self,msg:tuple[str, dict]): 
         text,textevent = msg
@@ -288,14 +283,6 @@ class FishTTS(BaseTTS):
             if res.status_code != 200:
                 logger.error("Error:%s", res.text)
                 return
-            
-            # 提取并存储音频总时长
-            if 'x-audio-duration' in res.headers:
-                self.total_duration = float(res.headers['x-audio-duration'])
-                logger.info(f"fish_speech Audio duration: {self.total_duration}s")
-            else:
-                self.total_duration = 0.0
-                logger.warning("fish_speech x-audio-duration header not found")
                 
             first = True
         
@@ -314,12 +301,6 @@ class FishTTS(BaseTTS):
     def stream_tts(self,audio_stream,msg:tuple[str, dict]):
         text,textevent = msg
         first = True
-        
-        # 重置播放时间
-        self.start_time = time.time()
-        self.paused = False
-        self.pause_time = 0.0
-        self.paused_duration = 0.0
         
         # 累积所有音频数据
         audio_buffer = b''
@@ -363,22 +344,6 @@ class FishTTS(BaseTTS):
             eventpoint.update(**textevent) #eventpoint={'status':'end','text':text,'msgevent':textevent}
             self.parent.put_audio_frame(np.zeros(self.chunk,np.float32),eventpoint)
     
-    def get_remaining_duration(self):
-        """获取总音频时长（秒），实际剩余时长由 basereal.py 中的队列计算"""
-        return self.total_duration
-    
-    def pause(self):
-        """暂停播放"""
-        if not self.paused:
-            self.paused = True
-            self.pause_time = time.time()
-    
-    def resume(self):
-        """恢复播放"""
-        if self.paused:
-            self.paused = False
-            self.paused_duration += time.time() - self.pause_time
-            self.pause_time = 0.0
 
 ###########################################################################################
 class SovitsTTS(BaseTTS):

@@ -149,6 +149,9 @@ class BaseReal:
     
     def get_remaining_duration(self)->float:
         """获取剩余播放时长（秒），考虑所有队列缓冲"""
+        if not self.speaking:
+            return 0.0
+        
         remaining_seconds = 0.0
         
         if hasattr(self.tts, 'get_remaining_duration'):
