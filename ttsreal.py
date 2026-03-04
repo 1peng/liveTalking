@@ -278,7 +278,7 @@ class FishTTS(BaseTTS):
                 },
             )
             end = time.perf_counter()
-            logger.info(f"fish_speech Time to make POST: {end-start}s")
+            # logger.info(f"fish_speech Time to make POST: {end-start}s")
 
             if res.status_code != 200:
                 logger.error("Error:%s", res.text)
@@ -290,7 +290,7 @@ class FishTTS(BaseTTS):
                 #print('chunk len:',len(chunk))
                 if first:
                     end = time.perf_counter()
-                    logger.info(f"fish_speech Time to first chunk: {end-start}s")
+                    # logger.info(f"fish_speech Time to first chunk: {end-start}s")
                     first = False
                 if chunk and self.state==State.RUNNING:
                     yield chunk
