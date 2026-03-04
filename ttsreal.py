@@ -364,18 +364,8 @@ class FishTTS(BaseTTS):
             self.parent.put_audio_frame(np.zeros(self.chunk,np.float32),eventpoint)
     
     def get_remaining_duration(self):
-        """获取剩余播放时长（秒）"""
-        if self.total_duration <= 0:
-            return 0.0
-        
-        if self.paused:
-            current_time = self.pause_time
-        else:
-            current_time = time.time()
-        
-        elapsed = current_time - self.start_time - self.paused_duration
-        remaining = max(0.0, self.total_duration - elapsed)
-        return remaining
+        """获取总音频时长（秒），实际剩余时长由 basereal.py 中的队列计算"""
+        return self.total_duration
     
     def pause(self):
         """暂停播放"""

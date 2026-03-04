@@ -148,10 +148,33 @@ class BaseReal:
         return self.speaking
     
     def get_remaining_duration(self)->float:
-        """获取剩余播放时长（秒）"""
+        """获取剩余播放时长（秒），考虑所有队列缓冲"""
+        remaining_seconds = 0.0
+        
         if hasattr(self.tts, 'get_remaining_duration'):
-            return self.tts.get_remaining_duration()
-        return 0.0
+            remaining_seconds = self.tts.get_remaining_duration()
+        
+        chunk_duration = self.chunk / self.sample_rate
+        
+        if hasattr(self, 'asr'):
+            if hasattr(self.asr, 'queue'):
+                try:
+                    remaining_seconds += self.asr.queue.qsize() * chunk_duration
+                except:
+                    pass
+            if hasattr(self.asr, 'output_queue'):
+                try:
+                    remaining_seconds += self.asr.output_queue.qsize() * chunk_duration
+                except:
+                    pass
+        
+        if hasattr(self, 'res_frame_queue'):
+            try:
+                remaining_seconds += self.res_frame_queue.qsize() * chunk_duration * 2
+            except:
+                pass
+        
+        return remaining_seconds
     
     def __loadcustom(self):
         for item in self.opt.customopt:
