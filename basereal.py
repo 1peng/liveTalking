@@ -53,12 +53,21 @@ def read_imgs(img_list):
 def play_audio(quit_event,queue):        
     import pyaudio
     p = pyaudio.PyAudio()
+    
+    output_device_index = None
+    try:
+        default_output = p.get_default_output_device_info()
+        output_device_index = default_output['index']
+        logger.info(f"Using default audio output device: {default_output['name']} (index={output_device_index})")
+    except Exception as e:
+        logger.warning(f"Could not get default output device: {e}, using system default")
+    
     stream = p.open(
         rate=16000,
         channels=1,
         format=8,
         output=True,
-        output_device_index=1,
+        output_device_index=output_device_index,
     )
     stream.start_stream()
     # while queue.qsize() <= 0:
