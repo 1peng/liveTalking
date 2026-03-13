@@ -24,3 +24,4 @@ wav2lip/result
 *.wav
 *.aac
 *.pkl
+.venv/
