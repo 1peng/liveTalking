@@ -152,20 +152,26 @@ def inference(quit_event,batch_size,face_list_cycle,audio_feat_queue,audio_out_q
                 idx = __mirror_index(length,index+i)
                 face = face_list_cycle[idx]
                 img_batch.append(face)
-            img_batch, mel_batch = np.asarray(img_batch), np.asarray(mel_batch)
+            img_batch = np.asarray(img_batch, dtype=np.float32)
+            mel_batch = np.asarray(mel_batch, dtype=np.float32)
 
             img_masked = img_batch.copy()
             img_masked[:, face.shape[0]//2:] = 0
 
-            img_batch = np.concatenate((img_masked, img_batch), axis=3) / 255.
+            img_batch = np.concatenate((img_masked, img_batch), axis=3) / 255.0
             mel_batch = np.reshape(mel_batch, [len(mel_batch), mel_batch.shape[1], mel_batch.shape[2], 1])
             
-            img_batch = torch.FloatTensor(np.transpose(img_batch, (0, 3, 1, 2))).to(device)
-            mel_batch = torch.FloatTensor(np.transpose(mel_batch, (0, 3, 1, 2))).to(device)
+            img_batch = torch.from_numpy(np.transpose(img_batch, (0, 3, 1, 2))).float().to(device)
+            mel_batch = torch.from_numpy(np.transpose(mel_batch, (0, 3, 1, 2))).float().to(device)
 
             with torch.no_grad():
                 pred = model(mel_batch, img_batch)
-            pred = pred.cpu().numpy().transpose(0, 2, 3, 1) * 255.
+            pred = pred.cpu().numpy().transpose(0, 2, 3, 1) * 255.0
+            
+            # 释放 GPU 内存
+            del img_batch, mel_batch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             counttime += (time.perf_counter() - t)
             count += batch_size
@@ -178,6 +184,7 @@ def inference(quit_event,batch_size,face_list_cycle,audio_feat_queue,audio_out_q
                 #self.__pushmedia(res_frame,loop,audio_track,video_track)
                 res_frame_queue.put((res_frame,__mirror_index(length,index),audio_frames[i*2:i*2+2]))
                 index = index + 1
+            del pred
             #print('total batch time:',time.perf_counter()-starttime)            
     logger.info('lipreal inference processor stop')
 
